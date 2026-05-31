@@ -13,6 +13,7 @@ import re
 import numpy as np
 import streamlit as st
 from openai import OpenAI
+from sentence_transformers import SentenceTransformer
 
 # Optional PDF support
 try:
@@ -20,6 +21,10 @@ try:
     PDF_SUPPORT = True
 except ImportError:
     PDF_SUPPORT = False
+
+@st.cache_resource
+def get_embedder():
+    return SentenceTransformer("all-MiniLM-L6-v2")
 
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -143,23 +148,21 @@ def extract_text_from_file(uploaded_file) -> str:
 # ── Embeddings & retrieval ─────────────────────────────────────────────────────
 
 def get_client():
+    provider = st.session_state.get("provider", "DeepSeek")
     api_key = st.session_state.get("api_key") or os.getenv("OPENAI_API_KEY", "")
     if not api_key:
-        st.error("Add your OpenAI API key in the sidebar.")
+        st.error("Add your API key in the sidebar.")
         st.stop()
-    return OpenAI(api_key=api_key)
+    if provider == "DeepSeek":
+        return OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
+    else:
+        return OpenAI(api_key=api_key, base_url="https://generativelanguage.googleapis.com/v1beta/openai/")
 
 
-def embed_texts(client: OpenAI, texts: list[str]) -> list[list[float]]:
-    """Batch embed texts using text-embedding-3-small."""
-    # Process in batches of 100
-    all_embeddings = []
-    batch_size = 100
-    for i in range(0, len(texts), batch_size):
-        batch = texts[i:i + batch_size]
-        resp = client.embeddings.create(model="text-embedding-3-small", input=batch)
-        all_embeddings.extend([r.embedding for r in resp.data])
-    return all_embeddings
+def embed_texts(texts: list[str]) -> list[list[float]]:
+    """Embed texts locally using sentence-transformers (no API cost)."""
+    embedder = get_embedder()
+    return embedder.encode(texts, convert_to_numpy=True).tolist()
 
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:
@@ -188,7 +191,7 @@ def answer_question(client: OpenAI, question: str, context_chunks: list[dict]) -
     )
     user = f"Context:\n{context}\n\nQuestion: {question}"
     resp = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="deepseek-chat" if st.session_state.get("provider","DeepSeek")=="DeepSeek" else "gemini-2.0-flash",
         messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
         temperature=0.1,
         max_tokens=500,
@@ -198,14 +201,14 @@ def answer_question(client: OpenAI, question: str, context_chunks: list[dict]) -
 
 # ── Build index ────────────────────────────────────────────────────────────────
 
-def build_index(client: OpenAI, docs: dict[str, str]) -> list[dict]:
+def build_index(docs: dict[str, str]) -> list[dict]:
     all_chunks = []
     for source, text in docs.items():
         all_chunks.extend(chunk_text(text, source))
 
-    with st.spinner(f"Embedding {len(all_chunks)} chunks…"):
+    with st.spinner(f"Embedding {len(all_chunks)} chunks (local model)…"):
         texts = [c["text"] for c in all_chunks]
-        embeddings = embed_texts(client, texts)
+        embeddings = embed_texts(texts)
         for chunk, emb in zip(all_chunks, embeddings):
             chunk["embedding"] = emb
 
@@ -219,7 +222,11 @@ st.caption("Upload documents → ask questions → get answers with source citat
 
 with st.sidebar:
     st.header("⚙️ Settings")
-    api_key_input = st.text_input("OpenAI API Key", type="password", placeholder="sk-...")
+    provider = st.radio("Model", ["DeepSeek", "Gemini Flash"], horizontal=True)
+    st.session_state["provider"] = provider
+    placeholder = "AIza..." if provider == "Gemini Flash" else "sk-..."
+    label = "Google AI Studio Key" if provider == "Gemini Flash" else "DeepSeek API Key"
+    api_key_input = st.text_input(label, type="password", placeholder=placeholder)
     if api_key_input:
         st.session_state["api_key"] = api_key_input
 
@@ -270,8 +277,7 @@ if docs:
     index_key = f"index_{hash(tuple(docs.keys()))}"
     if index_key not in st.session_state:
         if st.button("🔧 Build index", type="primary"):
-            client = get_client()
-            chunks = build_index(client, docs)
+            chunks = build_index(docs)
             st.session_state[index_key] = chunks
             st.success(f"Index built — {len(chunks)} chunks across {len(docs)} documents")
     else:
@@ -309,7 +315,7 @@ if docs:
         if question and st.button("🔍 Ask", type="primary"):
             client = get_client()
             with st.spinner("Searching knowledge base…"):
-                q_emb = embed_texts(client, [question])[0]
+                q_emb = embed_texts([question])[0]
                 top_chunks = retrieve(q_emb, chunks, top_k=top_k)
 
             with st.spinner("Generating answer…"):
