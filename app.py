@@ -148,15 +148,11 @@ def extract_text_from_file(uploaded_file) -> str:
 # ── Embeddings & retrieval ─────────────────────────────────────────────────────
 
 def get_client():
-    provider = st.session_state.get("provider", "DeepSeek")
-    api_key = st.session_state.get("api_key") or os.getenv("OPENAI_API_KEY", "")
+    api_key = os.getenv("OPENAI_API_KEY", "")
     if not api_key:
-        st.error("Add your API key in the sidebar.")
+        st.error("⚠️ API key not configured.")
         st.stop()
-    if provider == "DeepSeek":
-        return OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
-    else:
-        return OpenAI(api_key=api_key, base_url="https://generativelanguage.googleapis.com/v1beta/openai/")
+    return OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
@@ -191,7 +187,7 @@ def answer_question(client: OpenAI, question: str, context_chunks: list[dict]) -
     )
     user = f"Context:\n{context}\n\nQuestion: {question}"
     resp = client.chat.completions.create(
-        model="deepseek-chat" if st.session_state.get("provider","DeepSeek")=="DeepSeek" else "gemini-2.0-flash",
+        model="deepseek-chat",
         messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
         temperature=0.1,
         max_tokens=500,
@@ -222,13 +218,6 @@ st.caption("Upload documents → ask questions → get answers with source citat
 
 with st.sidebar:
     st.header("⚙️ Settings")
-    provider = st.radio("Model", ["DeepSeek", "Gemini Flash"], horizontal=True)
-    st.session_state["provider"] = provider
-    placeholder = "AIza..." if provider == "Gemini Flash" else "sk-..."
-    label = "Google AI Studio Key" if provider == "Gemini Flash" else "DeepSeek API Key"
-    api_key_input = st.text_input(label, type="password", placeholder=placeholder)
-    if api_key_input:
-        st.session_state["api_key"] = api_key_input
 
     st.divider()
     st.markdown("**Supported formats**")
