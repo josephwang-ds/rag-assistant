@@ -1,37 +1,47 @@
-# RAG Knowledge Assistant — Demo ④
+# RAG Knowledge Assistant
 
-> **Business impact:** Cuts document lookup from ~15 minutes to under 30 seconds. Scales to thousands of pages with zero retraining.
+Upload documents and ask questions — get precise answers with source citations.
 
-Upload any documents → ask questions in plain English → get precise answers with source citations.
+## Overview
 
-## Live demo
+A retrieval-augmented generation (RAG) pipeline built on top of OpenAI embeddings. Documents are chunked, embedded, and stored in an in-memory index. At query time, the most relevant chunks are retrieved by cosine similarity and passed to GPT-4o-mini, which answers strictly from the provided context and cites the source document.
 
-[josephjwang.com/analyst](https://josephjwang.com/analyst)
+## Features
 
-## What it does
+- **Multi-document upload** — `.txt`, `.md`, and `.pdf` (via pdfplumber) supported; multiple files at once
+- **Configurable retrieval** — top-k adjustable in the sidebar
+- **Grounded answers** — model is instructed to answer only from retrieved context and to say so when the answer isn't there
+- **Source transparency** — every answer shows the source document, chunk index, and similarity score
+- **Built-in sample** — 3 pre-loaded documents (return policy, shipping guide, product FAQ)
 
-1. Upload `.txt`, `.md`, or `.pdf` files (or use the built-in sample)
-2. Documents are chunked and embedded using `text-embedding-3-small`
-3. Your question is embedded and matched to the most relevant chunks (cosine similarity)
-4. GPT-4o-mini answers using only the retrieved context — no hallucination outside the docs
-5. Source document + chunk shown for every answer
+## Architecture
 
-## Sample knowledge base
+```
+Documents
+  → chunk (400 words, 80-word overlap)
+  → embed (text-embedding-3-small)
+  → in-memory index (numpy)
 
-Includes 3 pre-loaded documents:
-- **Return Policy** — eligibility, process, damaged items, exchanges
-- **Shipping Guide** — domestic/international rates, tracking, cutoff times
-- **Product FAQ** — materials, warranty, compatibility, battery life
+Query
+  → embed
+  → top-k cosine retrieval
+  → GPT-4o-mini (context-grounded)
+  → answer + citations
+```
 
-## Tech stack
+No external vector database required. For production scale, the numpy store is a drop-in swap for Chroma, Pinecone, or pgvector.
 
-- **Frontend:** Streamlit
-- **Embeddings:** OpenAI `text-embedding-3-small`
-- **Retrieval:** Cosine similarity (numpy, no external vector DB)
-- **Generation:** OpenAI GPT-4o-mini with strict context grounding
-- **PDF parsing:** pdfplumber (optional)
+## Stack
 
-## Run locally
+| Layer | Tools |
+|---|---|
+| Frontend | Streamlit |
+| Embeddings | OpenAI `text-embedding-3-small` |
+| Retrieval | NumPy (cosine similarity) |
+| Generation | OpenAI GPT-4o-mini |
+| PDF parsing | pdfplumber |
+
+## Quickstart
 
 ```bash
 pip install -r requirements.txt
@@ -39,20 +49,18 @@ export OPENAI_API_KEY=sk-...
 streamlit run app.py
 ```
 
-## Architecture
+## Sample questions
 
-```
-Documents → Chunking (400 words, 80 overlap) → Embeddings → In-memory index
-Query → Embed → Top-k cosine retrieval → GPT-4o-mini → Answer + citations
-```
+- What is the return window?
+- How long does international shipping take?
+- What warranty comes with electronics?
+- How do I report a damaged item?
 
-No external vector database required — index lives in Streamlit session state. For production, swap numpy store with Chroma, Pinecone, or pgvector.
+## Related
 
-## Related demos
-
-- [AI Data Analyst](../ai-data-analyst) — CSV → LLM analysis + charts
-- [ChatBI](../chatbi) — natural language → SQL → results
+- [AI Data Analyst](https://github.com/josephwang-ds/ai-data-analyst) — CSV → natural language analysis + charts
+- [ChatBI](https://github.com/josephwang-ds/chatbi) — natural language → SQL → results
 
 ---
 
-Built by [Joseph Wang](https://josephjwang.com) · Northwestern MSc Data Science · 6 years enterprise analytics
+[josephjwang.com](https://josephjwang.com) · [github.com/josephwang-ds](https://github.com/josephwang-ds)
