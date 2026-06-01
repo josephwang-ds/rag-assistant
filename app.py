@@ -37,7 +37,8 @@ st.markdown("""
     min-height:42px;font-weight:600;
   }
   .stButton>button:hover { border-color:var(--primary-color); }
-  .stButton>button[kind="primary"] { background:var(--primary-color) !important;border-color:var(--primary-color) !important;color:white !important; }
+  .stButton>button[data-testid="baseButton-primary"] { background:#4f46e5 !important;border-color:#4f46e5 !important;color:white !important; }
+  .stButton>button[kind="primary"] { background:#4f46e5 !important;border-color:#4f46e5 !important;color:white !important; }
   [data-testid="stFileUploader"] {
     border:2px dashed rgba(120,130,150,0.45) !important;border-radius:10px !important;
     padding:1rem !important;background:var(--secondary-background-color) !important;
@@ -242,7 +243,7 @@ with st.sidebar:
     st.markdown("**Business impact**")
     st.markdown("Document lookup: ~15 min → under 30 sec. Scales to thousands of pages.")
     st.divider()
-    if st.button("♻️ Reset demo state", use_container_width=True):
+    if st.button("Reset", use_container_width=True):
         for key in [
             "rag_sample",
             "_q_inject",
@@ -361,9 +362,9 @@ if docs:
 
     col_ask, col_clear, _ = st.columns([1, 1, 6])
     with col_ask:
-        ask = st.button("🔍 Ask", type="primary", disabled=not question, use_container_width=True)
+        ask = st.button("Ask", type="primary", disabled=not question, use_container_width=True)
     with col_clear:
-        if st.button("🗑 Clear", use_container_width=True):
+        if st.button("Clear", use_container_width=True):
             st.session_state.pop("rag_answer", None)
             st.session_state.pop("rag_chunks", None)
             st.session_state["_q_inject"] = ""
