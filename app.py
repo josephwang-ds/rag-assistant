@@ -38,6 +38,11 @@ st.markdown("""
     border:2px dashed #334155 !important;border-radius:10px !important;
     padding:1.5rem !important;background:#1a1f2e !important;
   }
+  [data-testid="stDownloadButton"]>button {
+    background:#1e293b !important;border:1px solid #334155 !important;
+    color:#e2e8f0 !important;border-radius:8px !important;
+  }
+  [data-testid="stDownloadButton"]>button:hover { border-color:#6366f1 !important; }
   .source-card {
     background:#1a1f2e;border:1px solid #334155;border-radius:8px;
     padding:0.8rem 1rem;margin-bottom:0.6rem;
