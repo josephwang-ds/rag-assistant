@@ -232,6 +232,17 @@ with st.sidebar:
     st.markdown("**Business impact**")
     st.markdown("Document lookup: ~15 min → under 30 sec. Scales to thousands of pages.")
     st.divider()
+    if st.button("♻️ Reset demo state", use_container_width=True):
+        for key in [
+            "rag_sample",
+            "_q_inject",
+            "rag_question",
+            "rag_answer",
+            "rag_chunks",
+        ]:
+            st.session_state.pop(key, None)
+        st.rerun()
+    st.divider()
     st.markdown("Built by [Joseph Wang](https://josephjwang.com)")
 
 # ── Header ─────────────────────────────────────────────────────────────────────
@@ -242,6 +253,18 @@ font-size:2.2rem;font-weight:700;margin-bottom:0.2rem'>📚 RAG Knowledge Assist
 <p style='color:#94a3b8;font-size:1rem;margin-bottom:1.5rem'>
 Upload documents → ask questions → get precise answers with source citations</p>
 """, unsafe_allow_html=True)
+st.markdown(
+    """
+<div style="background:#1a1f2e;border:1px solid #334155;border-radius:10px;padding:0.9rem 1.1rem;color:#cbd5e1;line-height:1.75;margin-bottom:0.8rem;font-size:0.86rem;">
+<b>Demo storyline</b><br>
+1) Load 2-3 documents with clear policy/faq style content<br>
+2) Ask one specific question and verify source citations<br>
+3) Show one out-of-scope question to demonstrate grounded limitation<br><br>
+<b>Suggested flow (2-4 min)</b>: sample docs start → citation proof → ask one missing-context question
+</div>
+""",
+    unsafe_allow_html=True,
+)
 
 # ── Step 1: Load documents ─────────────────────────────────────────────────────
 st.markdown('<span class="section-tag">Step 1 — Load your knowledge base</span>', unsafe_allow_html=True)
@@ -303,6 +326,7 @@ if docs:
     # ── Step 2: Ask ────────────────────────────────────────────────────────────
     st.divider()
     st.markdown('<span class="section-tag">Step 2 — Ask a question</span>', unsafe_allow_html=True)
+    st.caption("Ask with concrete entities (policy name, timeline, product name) for higher retrieval confidence.")
 
     if mode == "Use sample knowledge base":
         st.markdown("**Quick picks:**")
@@ -357,6 +381,12 @@ if docs:
             f"{st.session_state['rag_answer']}</div>",
             unsafe_allow_html=True,
         )
+        top_score = st.session_state["rag_chunks"][0]["score"] if st.session_state.get("rag_chunks") else 0
+        if top_score < 0.35:
+            st.warning("Low retrieval confidence. Try a more specific question or add a more relevant document.")
+        answer_lower = st.session_state["rag_answer"].lower()
+        if "not in the context" in answer_lower or "not in context" in answer_lower:
+            st.info("No direct evidence found. Good next step: upload a policy/spec doc that explicitly covers this topic.")
 
         # Source citations
         with st.expander("📎 Source citations"):
