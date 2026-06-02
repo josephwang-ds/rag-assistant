@@ -4,7 +4,7 @@ Upload documents and ask questions — get precise answers with source citations
 
 ## Overview
 
-A retrieval-augmented generation (RAG) pipeline built on top of OpenAI embeddings. Documents are chunked, embedded, and stored in an in-memory index. At query time, the most relevant chunks are retrieved by cosine similarity and passed to GPT-4o-mini, which answers strictly from the provided context and cites the source document.
+A retrieval-augmented generation (RAG) pipeline using local SentenceTransformer embeddings and DeepSeek generation through an OpenAI-compatible client. Documents are chunked, embedded, and stored in an in-memory index. At query time, the most relevant chunks are retrieved by cosine similarity and passed to the LLM, which answers strictly from the provided context and cites the source document.
 
 ## Features
 
@@ -19,13 +19,13 @@ A retrieval-augmented generation (RAG) pipeline built on top of OpenAI embedding
 ```
 Documents
   → chunk (400 words, 80-word overlap)
-  → embed (text-embedding-3-small)
+  → embed (all-MiniLM-L6-v2, local)
   → in-memory index (numpy)
 
 Query
   → embed
   → top-k cosine retrieval
-  → GPT-4o-mini (context-grounded)
+  → DeepSeek chat (context-grounded)
   → answer + citations
 ```
 
@@ -36,16 +36,16 @@ No external vector database required. For production scale, the numpy store is a
 | Layer | Tools |
 |---|---|
 | Frontend | Streamlit |
-| Embeddings | OpenAI `text-embedding-3-small` |
+| Embeddings | Sentence Transformers `all-MiniLM-L6-v2` |
 | Retrieval | NumPy (cosine similarity) |
-| Generation | OpenAI GPT-4o-mini |
+| Generation | DeepSeek `deepseek-chat` via OpenAI-compatible API |
 | PDF parsing | pdfplumber |
 
 ## Quickstart
 
 ```bash
 pip install -r requirements.txt
-export OPENAI_API_KEY=sk-...
+export OPENAI_API_KEY=your_deepseek_api_key
 streamlit run app.py
 ```
 
